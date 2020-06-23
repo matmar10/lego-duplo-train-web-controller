@@ -3,7 +3,7 @@ import express from 'express';
 import { join } from 'path';
 import { Server } from 'ws';
 
-import { doDeviceAction, poweredUP, spinner } from './train';
+import { devices, doDeviceAction, poweredUP, spinner } from './train';
 
 spinner.start('Starting up...');
 
@@ -23,6 +23,15 @@ wss.on('connection', (ws) => {
   ws.on('close', () => {
     spinner.warn('Client disconnected');
   });
+
+  if (devices && devices.speed) {
+    devices.speed.on('speed', (ev: any) => {
+      ws.send(JSON.stringify({
+        type: 'speed',
+        data: ev
+      }));
+    });
+  }
 
   // { "type": "device", "name": "motor", "method": "setPower", "args": [50]}
   ws.on('message', async function incoming(data) {

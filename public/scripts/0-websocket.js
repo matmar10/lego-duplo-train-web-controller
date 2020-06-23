@@ -3,8 +3,8 @@
 $(function() {
   var subscribers = {};
   $.websocketAddSubscriber = function(type, fn) {
+    subscribers[type] = fn;
     console.info('Added new subscriber for ' + type);
-    subscribers[keyword] = fn;
   };
 
   $.websocketSend = function(params) {
@@ -12,13 +12,16 @@ $(function() {
   };
 
   var HOST = location.origin.replace(/^http/, 'ws')
-  var ws = new WebSocket(HOST);
-  ws.onmessage = function (event) {
+  window.ws = new WebSocket(HOST);
+  window.ws.onmessage = function (event) {
+    if (!event.data) {
+      return;
+    }
     try {
-      var parsed = JSON.parse(event);
+      var parsed = JSON.parse(event.data);
       if (parsed.type) {
         console.info('Received payload for type \'' + parsed.type + '\'', parsed);
-        subscribers[keyword](parsed);
+        subscribers[parsed.type](parsed);
       } else {
         console.log('Unknown type for websocket payload:', parsed);
       }

@@ -19,7 +19,8 @@ export const spinner = ora();
 const poweredUP = new PoweredUP();
 export { poweredUP }
 
-const devices : { [key: string]: any } = {};
+interface DevicesMap { [key: string]: any }
+export const devices : DevicesMap = {};
 
 export interface DeviceAction {
   type: string,
@@ -41,6 +42,60 @@ export async function doDeviceAction(req: DeviceAction): Promise<any> {
   await method.apply(device, req.args);
   await devices.hub.sleep(1000);
 }
+
+// export interface DeviceListenerMap {
+//   [key: string]: Function[]
+// }
+//
+// export interface ListenerMap {
+//   [key: string]: DeviceListenerMap
+// }
+//
+// const listeners: ListenerMap = {};
+// export async function listenDeviceEvent(deviceName: string, event: string, fn: Function) {
+//   const device = devices[deviceName];
+//   if (!device) {
+//     throw new Error(`No device: ${deviceName}`);
+//   }
+//   listeners[deviceName] = listeners[deviceName] || {};
+//   listeners[deviceName][event] = listeners[deviceName][event] || [];
+//   listeners[deviceName][event].push(fn);
+//
+//   bindListener(deviceName, listeners[deviceName]);
+// }
+//
+// function bindListener(deviceName: string, listenerMap: DeviceListenerMap) {
+//   const device = devices[deviceName];
+//   if (!device) {
+//     return;
+//   }
+//   const events = Object.keys(listenerMap);
+//   events.forEach(eventName => {
+//     const listenersForEvent = listenerMap[eventName];
+//     device.on(eventName, (ev: any) => {
+//       listenersForEvent.forEach((listener: Function) => listener({
+//         type: eventName,
+//         data: ev
+//       }));
+//     });
+//   });
+// }
+//
+// function bindListeners(devicesObj: DevicesMap, listenersMap: ListenerMap) {
+//   const devicesList = Object.keys(devicesObj);
+//   devicesList.forEach((deviceName) => {
+//     if (!listeners[deviceName]) {
+//       return;
+//     }
+//     const listenersForDevice = listenersMap[deviceName];
+//     bindListener(deviceName, listenersForDevice);
+//   });
+// }
+
+// speedometer.on('speed', function(ev) {
+//   const speed = ev.speed;
+//   console.log('Speed:', speed);
+// });
 
 // const checkColorLimiter = new Bottleneck({
 //   maxConcurrent: 1,
