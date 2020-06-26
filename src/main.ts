@@ -1,56 +1,59 @@
-import Promise from 'bluebird';
-import express from 'express';
-import { join } from 'path';
-import { Server } from 'ws';
 
-import { devices, doDeviceAction, poweredUP, spinner } from './train';
+import Bottleneck from 'bottleneck';
+import PoweredUP, { DuploTrainBase } from 'node-poweredup';
+import ora from 'ora';
 
-spinner.start('Starting up...');
+import { layout } from './layouts/loop-with-siding';
+import {
+  ColorEmoji,
+  TileColorValues,
+  TileName
+} from './lib/color';
+import { delay } from './lib/delay';
+import { Train } from './train';
 
-const PORT = process.env.PORT || 3000;
+const checkColorLimiter = new Bottleneck({
+  maxConcurrent: 1,
+  highWater: 0,
+  minTime: 0
+});
+const triggerTileLimiter = new Bottleneck({
+  maxConcurrent: 1,
+  highWater: 0,
+  minTime: 300
+});
 
-const server = express()
-  .use(express.static(join(__dirname, '/../public')))
-  .listen(PORT, () => {
-    spinner.info(`API listening on ${PORT}`);
-    spinner.start('Scanning for Hubs...');
-    poweredUP.scan();
-  });
+const pUP = new PoweredUP();
+const spinner = ora();
+pUP.on('discover', async (hub: DuploTrainBase) => {
+  spinner.succeed('Discovered Hub');
+  spinner.start('Connecting train & devices...');
+  const train = new Train(hub, pUP);
+  await train.ready();
+  spinner.succeed('Connected train & devices OK!');
 
-const wss = new Server({ server });
-wss.on('connection', (ws) => {
-  spinner.succeed('Client connected');
-  ws.on('close', () => {
-    spinner.warn('Client disconnected');
-  });
+  const notifyReflect = (ev: any) => {
+    console.log(ev);
+    layout.reflect(train, ev.reflect);
+  };
+  const notifySpeed = (ev: any) => {
+    console.log(ev);
+    layout.speed(train, ev.speed);
+  };
 
-  if (devices && devices.speed) {
-    devices.speed.on('speed', (ev: any) => {
-      ws.send(JSON.stringify({
-        type: 'speed',
-        data: ev
-      }));
-    });
-  }
-
-  // { "type": "device", "name": "motor", "method": "setPower", "args": [50]}
-  ws.on('message', async function incoming(data) {
-    const parsed = JSON.parse(data.toString());
-    if (Array.isArray(parsed)) {
-      await Promise.each(parsed, async (req) => {
-        switch (req.type) {
-          case 'device':
-            const message = `Device action: ${req.name}.${req.method}(${req.args.join(',')})`;
-            spinner.info(message);
-            try {
-              await doDeviceAction(req);
-              spinner.succeed(message);
-            } catch (err) {
-              spinner.fail(`${message} - ${err}`);
-            }
-        }
+  layout.on('*', function (eventName: string, data: any) {
+    const { priorState, state } = data.client.__machina__['duplo-train-layout'];
+    if ('transition' === eventName) {
+      console.log({
+        priorState,
+        state
       });
     }
-    spinner.start('Listening for instructions...');
   });
+
+  layout.start(train);
+  train.on('speed', 'speed', notifySpeed);
+  train.on('color', 'reflect', notifyReflect);
 });
+pUP.scan();
+spinner.start('Scanning for Hubs...');
