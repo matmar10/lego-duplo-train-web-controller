@@ -1,3 +1,4 @@
+import Bottleneck from 'bottleneck';
 
 export interface ColorRange {
   readonly min: number;
@@ -154,5 +155,48 @@ export class TileName {
     });
     return matched.red && matched.green && matched.blue;
   }
+}
 
+export function buildThrottledNotifyTileDetected() {
+
+  const checkColorLimiter = new Bottleneck({
+    maxConcurrent: 1,
+    highWater: 0,
+    minTime: 333
+  });
+  const triggerTileLimiter = new Bottleneck({
+    maxConcurrent: 1,
+    highWater: 0,
+    minTime: 500
+  });
+
+  const triggerTileLimited = triggerTileLimiter.wrap(async (tileName: string, fn: Function) => {
+    try {
+      fn(tileName);
+    } catch (err) { }
+  });
+
+  const checkColorLimited = checkColorLimiter.wrap(async (ev: any) => {
+    try {
+      const adjusted = {
+        red: ev.red / 2,
+        green: ev.green / 2,
+        blue: ev.blue / 2
+      };
+      const tileName = TileName.getTileName(adjusted);
+      // console.log(`Color: ${adjusted.red}:${adjusted.green}:${adjusted.blue} Tile: ${tileName}`);
+      return tileName;
+    } catch (err) {
+      return '';
+    }
+  });
+
+  return async function(ev: RGBColor, callback: Function) {
+    try {
+      const tileName = await checkColorLimited(ev);
+      if (tileName) {
+        await triggerTileLimited(tileName, callback);
+      }
+    } catch (err) { }
+  };
 }

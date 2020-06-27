@@ -16,10 +16,12 @@
     "bluebird": "^3.7.2",
     "bottleneck": "^2.19.5",
     "clap-detector": "^0.5.1",
+    "eslint-plugin-es-beautifier": "^1.0.1",
     "express": "^4.17.1",
     "machina": "^4.0.2",
     "node-poweredup": "^6.7.0",
     "ora": "^4.0.4",
+    "superagent": "^5.2.2",
     "ts-node": "^8.10.2",
     "usb": "^1.6.3",
     "ws": "^7.3.0"
@@ -27,6 +29,7 @@
   "devDependencies": {
     "@types/debug": "^4.1.5",
     "@types/node": "^14.0.5",
+    "eslint": "^7.3.1",
     "tslint": "^6.1.2",
     "typescript": "^3.9.3"
   }

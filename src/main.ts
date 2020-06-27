@@ -1,27 +1,11 @@
 
-import Bottleneck from 'bottleneck';
+// import Bottleneck from 'bottleneck';
 import PoweredUP, { DuploTrainBase } from 'node-poweredup';
 import ora from 'ora';
 
 import { layout } from './layouts/loop-with-siding';
-import {
-  ColorEmoji,
-  TileColorValues,
-  TileName
-} from './lib/color';
-import { delay } from './lib/delay';
+import { ColorEmoji } from './lib/color';
 import { Train } from './train';
-
-const checkColorLimiter = new Bottleneck({
-  maxConcurrent: 1,
-  highWater: 0,
-  minTime: 0
-});
-const triggerTileLimiter = new Bottleneck({
-  maxConcurrent: 1,
-  highWater: 0,
-  minTime: 300
-});
 
 const pUP = new PoweredUP();
 const spinner = ora();
@@ -32,28 +16,55 @@ pUP.on('discover', async (hub: DuploTrainBase) => {
   await train.ready();
   spinner.succeed('Connected train & devices OK!');
 
-  const notifyReflect = (ev: any) => {
-    console.log(ev);
-    layout.reflect(train, ev.reflect);
-  };
-  const notifySpeed = (ev: any) => {
-    console.log(ev);
-    layout.speed(train, ev.speed);
-  };
+  // TODO: file bug report on this
+  // const COLOR = 0x00;
+  // const REFLECTIVITY = 0x02;
+  // const RGB = 0x03;
+  // train.devices.color.subscribe(REFLECTIVITY);
+  // await delay(2000);
+  // train.devices.color.subscribe(RGB);
+  // await delay(2000);
+  // train.devices.color.subscribe(REFLECTIVITY);
+  // await delay(2000);
+  // train.devices.color.subscribe(RGB);
+
+  // train.devices.color.on('rgb', (ev) => {
+  //   console.log(ev.red + ev.green + ev.blue);
+  // });
+
 
   layout.on('*', function (eventName: string, data: any) {
-    const { priorState, state } = data.client.__machina__['duplo-train-layout'];
+    const machina = data.client.__machina__['duplo-train-layout'];
+    const { priorState, state } = machina;
     if ('transition' === eventName) {
-      console.log({
-        priorState,
-        state
-      });
+      spinner.info(`${priorState} ➡️ ${state}`);
+      spinner.start(`🚂 ${state}...`);
+    }
+    if ('tile' === data.inputType && 'handled' === eventName) {
+      const tileName = machina.currentActionArgs[1];
+      const emoji = ColorEmoji[tileName];
+      setTimeout(() => {
+        let msg: string;
+        if ('handled' === eventName) {
+          const count = train.getState('loopCount') || 0;
+          msg = `${emoji} ${tileName} passed (count: ${count})`;
+          spinner.succeed(msg);
+          spinner.start(`In state: ${state}...`);
+        }
+      }, 200);
+    }
+    if ('finishedLoops' === data.inputType && 'handled' === eventName) {
+      spinner.succeed(`🏁 finished loop.`);
+      spinner.start(`🔙 Backing into siding..`);
     }
   });
 
+  // layout.on('tile', function (eventName: string, tileName: string) {
+  //   const emoji = ColorEmoji[tileName];
+  //   const count = train.getState('loopCount') || 0;
+  //   spinner.succeed(`${emoji} ${tileName} passed ${count} times`);
+  // });
   layout.start(train);
-  train.on('speed', 'speed', notifySpeed);
-  train.on('color', 'reflect', notifyReflect);
 });
 pUP.scan();
 spinner.start('Scanning for Hubs...');

@@ -31,7 +31,7 @@ export const devicesList: DeviceNameToType[] = [{
   name: 'led',
   id: 'HUB_LED',
 }, {
-  name: 'speed',
+  name: 'speedometer',
   id: 'DUPLO_TRAIN_BASE_SPEEDOMETER'
 }];
 
@@ -115,14 +115,18 @@ export class Train {
   public on(device: string, event: string, fn: Function) {
     this.off(device, event);
     this.devices[device].on(event, fn);
+    this._listeners[device][event] = fn;
   }
 
   public off(device: string, event: string) {
-    this._listeners[device] = this._listeners[device] || {};
-    if (this._listeners[device][event]) {
-      const fn: Function = this._listeners[device][event];
-      this.devices[device].off(event, fn);
-      delete this._listeners[device][event];
+    const hardwareDevice = this.devices[device];
+    if (!hardwareDevice) {
+      throw new Error(`Invalid device: ${device}`);
+    }
+    const fn: Function = this._listeners[device][event];
+    if (fn) {
+      hardwareDevice.off(event, fn);
+      return;
     }
   }
 
@@ -135,5 +139,6 @@ export class Train {
       const type: Consts.DeviceType = (<any>Consts.DeviceType)[device.id];
       this.devices[device.name] = await this.devices.hub.waitForDeviceByType(type);
     }));
+    Object.keys(this.devices).forEach(deviceName => this._listeners[deviceName] = {});
   }
 }
