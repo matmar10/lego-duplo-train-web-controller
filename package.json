@@ -17,7 +17,7 @@
     "bottleneck": "^2.19.5",
     "clap-detector": "^0.5.1",
     "eslint-plugin-es-beautifier": "^1.0.1",
-    "express": "^4.17.1",
+    "express": "^4.17.3",
     "machina": "^4.0.2",
     "node-poweredup": "^6.7.0",
     "ora": "^4.0.4",
